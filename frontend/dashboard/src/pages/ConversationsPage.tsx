@@ -28,13 +28,14 @@ import {
   listConversations,
   getConversation,
   sendConversationMessage,
-  initiatePayment,
   checkPaymentStatus,
   generateDemoMatches,
   type Conversation,
   type ConversationMessage,
   type PaymentStatus,
 } from '../api'
+import PaymentGatewaySelector from '../components/PaymentGatewaySelector'
+import type { VerifyPaymentResponse } from '../components/RazorpayCheckout'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -749,7 +750,7 @@ export default function ConversationsPage() {
   const [selected, setSelected] = useState<Conversation | null>(null)
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
-  const [paying, setPaying] = useState(false)
+  const [paying] = useState(false)
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | null>(null)
   const [messageInput, setMessageInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -891,40 +892,31 @@ export default function ConversationsPage() {
     [selected, messageInput, demoMode]
   )
 
-  // Handle payment
-  const handlePay = useCallback(async () => {
-    if (!selected) return
-    setPaying(true)
-    try {
-      const result = await initiatePayment(selected.id, 'demo')
-      if (result) {
-        setPaymentStatus({
-          escrow_id: result.escrow_id,
-          status: result.status,
-          amount: result.amount,
-          funded: result.access_granted,
-          access_granted: result.access_granted,
-          subscription_active: true,
-          message: result.message,
-        })
-        const refreshed = await getConversation(selected.id)
-        if (refreshed) setSelected(refreshed)
-      }
-    } catch {
-      // Demo fallback
-      const price = getDetails(selected).price || 4.5
+  // Handle payment (gateway selector)
+  const [showPaymentGateway, setShowPaymentGateway] = useState(false)
+
+  const handlePaySuccess = useCallback(async (result: VerifyPaymentResponse, gateway: string) => {
+    setShowPaymentGateway(false)
+    if (result.verified) {
       setPaymentStatus({
-        escrow_id: `esc_${Date.now()}`,
+        escrow_id: result.payment_id,
         status: 'funded',
-        amount: price,
+        amount: result.amount,
         funded: true,
         access_granted: true,
         subscription_active: true,
-        message: 'Payment complete! Access granted.',
+        message: `Payment via ${gateway} successful!`,
       })
-    } finally {
-      setPaying(false)
+      if (selected) {
+        const refreshed = await getConversation(selected.id)
+        if (refreshed) setSelected(refreshed)
+      }
     }
+  }, [selected])
+
+  const handlePay = useCallback(async () => {
+    if (!selected) return
+    setShowPaymentGateway(true)
   }, [selected])
 
   // Handle reactions
@@ -1240,8 +1232,26 @@ export default function ConversationsPage() {
               )}
             </div>
 
+            {/* Payment gateway selector modal */}
+            {showPaymentGateway && selected && (
+              <div className="border-t border-slate-800 bg-slate-900/95 p-4">
+                <PaymentGatewaySelector
+                  amount={selected.subscription_details?.price_cents != null
+                    ? (selected.subscription_details.price_cents as number) / 100
+                    : 4.50}
+                  matchId={selected.match_id}
+                  currency="INR"
+                  onSuccess={handlePaySuccess}
+                  onFailure={() => setShowPaymentGateway(false)}
+                  onCancel={() => setShowPaymentGateway(false)}
+                />
+              </div>
+            )}
+
             {/* Payment status banner */}
-            <PaymentStatusBanner status={paymentStatus} onPay={handlePay} paying={paying} />
+            {!showPaymentGateway && (
+              <PaymentStatusBanner status={paymentStatus} onPay={handlePay} paying={paying} />
+            )}
 
             {/* Quick replies */}
             <QuickReplies

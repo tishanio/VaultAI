@@ -279,6 +279,7 @@ from services.api_gateway.routers import (
     agent,
     conversations,
 )
+from services.api_gateway.routers.razorpay import router as razorpay_router
 from services.api_gateway.websocket import router as ws_router, ws_forwarder
 
 app.include_router(auth.router, prefix=settings.API_PREFIX, tags=["Auth"])
@@ -287,6 +288,7 @@ app.include_router(subscriptions.router, prefix=settings.API_PREFIX, tags=["Subs
 app.include_router(marketplace.router, prefix=settings.API_PREFIX, tags=["Marketplace"])
 app.include_router(matches.router, prefix=settings.API_PREFIX, tags=["Matches"])
 app.include_router(escrow.router, prefix=settings.API_PREFIX, tags=["Escrow"])
+app.include_router(razorpay_router, prefix=settings.API_PREFIX, tags=["Razorpay"])
 app.include_router(conversations.router, prefix=settings.API_PREFIX, tags=["Conversations"])
 app.include_router(compliance.router, prefix=settings.API_PREFIX, tags=["Compliance"])
 app.include_router(notifications.router, prefix=settings.API_PREFIX, tags=["Notifications"])

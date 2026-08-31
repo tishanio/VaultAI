@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     STRIPE_CONNECT_CLIENT_ID: str = ""
     PLATFORM_FEE_PERCENTAGE: float = 12.0
 
+    # --- Razorpay ---
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+    RAZORPAY_WEBHOOK_SECRET: str = ""
+    RAZORPAY_MODE: str = "sandbox"  # sandbox | live
+
     # --- Plaid ---
     PLAID_CLIENT_ID: str = ""
     PLAID_SECRET: str = ""
