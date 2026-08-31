@@ -66,7 +66,25 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    setTimeout(() => {
+    try {
+      const { data } = await import('../api').then((m) =>
+        m.api.post('/api/v1/auth/login', { email, password })
+      )
+      const user = {
+        id: data.user_id,
+        email,
+        username: data.username,
+        displayName: data.username,
+        isVerified: true,
+        reputationScore: 0.87,
+        isAdmin: false,
+      }
+      localStorage.setItem('vault_token', data.access_token)
+      addAccount(user, data.access_token)
+      setLoading(false)
+      navigate('/')
+    } catch {
+      // Fallback to client-side login
       const newUser = {
         id: `user-${Date.now()}`,
         email: email || 'demo@vault.app',
@@ -79,22 +97,43 @@ export default function LoginPage() {
       addAccount(newUser, `tok_${Date.now()}`)
       setLoading(false)
       navigate('/')
-    }, 500)
+    }
   }
 
-  const handleDemoLogin = () => {
-    if (!demoMode) toggleDemoMode()
-    const demoUser = {
-      id: 'demo-user-1',
-      email: 'demo@vault.app',
-      username: 'demo_user',
-      displayName: 'Demo User',
-      isVerified: true,
-      reputationScore: 0.87,
-      isAdmin: false,
+  const handleDemoLogin = async () => {
+    setLoading(true)
+    try {
+      const { api } = await import('../api')
+      const { data } = await api.post('/api/v1/demo/login?username=sarahchen')
+      const user = {
+        id: data.user_id,
+        email: 'sarah.chen@gmail.com',
+        username: data.username,
+        displayName: 'Sarah Chen',
+        isVerified: true,
+        reputationScore: 0.92,
+        isAdmin: false,
+      }
+      localStorage.setItem('vault_token', data.access_token)
+      if (!demoMode) toggleDemoMode()
+      addAccount(user, data.access_token)
+      setLoading(false)
+      navigate('/')
+    } catch {
+      // Fallback to client-side demo
+      const demoUser = {
+        id: 'demo-user-1',
+        email: 'demo@vault.app',
+        username: 'demo_user',
+        displayName: 'Demo User',
+        isVerified: true,
+        reputationScore: 0.87,
+        isAdmin: false,
+      }
+      addAccount(demoUser, 'demo-token')
+      setLoading(false)
+      navigate('/')
     }
-    addAccount(demoUser, 'demo-token')
-    navigate('/')
   }
 
   const handleSwitch = (id: string) => {

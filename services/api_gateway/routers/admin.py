@@ -121,7 +121,7 @@ class HealthStatus(BaseModel):
 
 async def require_admin(user: User = Depends(get_current_user)):
     """Ensure the current user has admin role."""
-    if user.role.value != "admin":
+    if user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
 
@@ -279,7 +279,7 @@ async def deactivate_user(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    if user.role.value == "admin":
+    if user.role == "admin":
         raise HTTPException(status_code=400, detail="Cannot deactivate admin users")
     user.is_active = False
     await db.flush()
@@ -336,7 +336,7 @@ async def list_disputes(
                 id=str(d.id),
                 match_id=str(d.match_id),
                 filed_by_id=str(d.filed_by_id),
-                status=d.status.value,
+                status=d.status,
                 reason=d.reason,
                 description=d.description,
                 created_at=d.created_at.isoformat(),
@@ -370,7 +370,7 @@ async def get_activity_feed(
         "activity": [
             ActivityFeedItem(
                 id=str(e.id),
-                type=e.event_type.value,
+                type=e.event_type,
                 title=e.title,
                 description=e.description,
                 severity=e.severity,

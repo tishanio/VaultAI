@@ -162,7 +162,7 @@ async def create_conversation(
         match_id=str(conversation.match_id),
         buyer_id=str(conversation.buyer_id),
         seller_id=str(conversation.seller_id),
-        status=conversation.status.value,
+        status=conversation.status,
         topic=conversation.topic,
         subscription_details=conversation.subscription_details,
         created_at=conversation.created_at.isoformat(),
@@ -208,7 +208,7 @@ async def list_conversations(
             match_id=str(c.match_id),
             buyer_id=str(c.buyer_id),
             seller_id=str(c.seller_id),
-            status=c.status.value,
+            status=c.status,
             topic=c.topic,
             subscription_details=c.subscription_details,
             message_count=msg_counts.get(c.id, 0),
@@ -249,7 +249,7 @@ async def get_conversation(
         match_id=str(conversation.match_id),
         buyer_id=str(conversation.buyer_id),
         seller_id=str(conversation.seller_id),
-        status=conversation.status.value,
+        status=conversation.status,
         topic=conversation.topic,
         subscription_details=conversation.subscription_details,
         message_count=len(conversation.messages) if conversation.messages else 0,
@@ -625,7 +625,7 @@ async def initiate_payment_from_conversation(
         amount=amount,
         platform_fee=platform_fee,
         seller_payout=str(seller_payout),
-        status=escrow.status.value,
+        status=escrow.status,
         access_granted=access_granted,
         message=(
             "Payment complete! Access granted."
@@ -680,7 +680,7 @@ async def check_payment_status(
     if listing:
         sub_result = await db.execute(select(Subscription).where(Subscription.id == listing.subscription_id))
         sub = sub_result.scalar_one_or_none()
-        if sub and sub.status.value == "active":
+        if sub and sub.status == "active":
             sub_active = True
 
     messages = []
@@ -695,7 +695,7 @@ async def check_payment_status(
 
     return PaymentStatusResponse(
         escrow_id=str(escrow.id),
-        status=escrow.status.value,
+        status=escrow.status,
         amount=escrow.amount,
         funded=funded,
         access_granted=access_granted,

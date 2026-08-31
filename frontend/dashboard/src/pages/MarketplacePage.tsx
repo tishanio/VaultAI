@@ -1,186 +1,189 @@
-import { useMemo, useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Search,
   MapPin,
   Star,
-  UserPlus,
+  Clock,
+  Loader,
+  Zap,
 } from 'lucide-react'
 import { useAppStore } from '../store'
-import { generateDemoListings } from '../api'
+import { api, proposeMatch } from '../api'
+
+interface Listing {
+  id: string
+  seller_id: string
+  subscription_id: string
+  status: string
+  asking_price: number
+  dynamic_price: number
+  seats_available: number
+  description: string
+  geo_radius_km: number
+  min_trust_score: number
+  meta?: Record<string, any>
+  created_at: string
+  seller?: {
+    id: string
+    display_name: string
+    username: string
+  }
+  subscription?: {
+    service_name: string
+    service_category: string
+    tier: string
+    monthly_cost: number
+  }
+}
+
+const LOGOS: Record<string, string> = {
+  Spotify: '🎵', 'Google One': '☁️', 'YouTube Premium': '📺', Netflix: '🎬',
+  'Microsoft 365': '💼', Canva: '🎨', Duolingo: '🦉', Headspace: '🧘',
+  Calm: '🧘', 'Apple Music': '🎵',
+}
 
 export default function MarketplacePage() {
   const demoMode = useAppStore((s) => s.demoMode)
-  const listings = useMemo(
-    () => (demoMode ? generateDemoListings() : []),
-    [demoMode]
-  )
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [sortBy, setSortBy] = useState<'price' | 'score' | 'distance'>('score')
-  const [matchAnimation, setMatchAnimation] = useState<string | null>(null)
+  const [listings, setListings] = useState<Listing[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [proposing, setProposing] = useState<string | null>(null)
+  const [proposedIds, setProposedIds] = useState<Set<string>>(new Set())
 
-  const filteredListings = useMemo(() => {
-    let filtered = listings
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (l) =>
-          l.serviceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          l.sellerName.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      try {
+        const { data } = await api.get('/api/v1/marketplace/listings')
+        if (Array.isArray(data)) {
+          setListings(data)
+        }
+      } catch {
+        setListings([])
+      } finally {
+        setLoading(false)
+      }
     }
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter((l) => l.serviceCategory === selectedCategory)
-    }
-    if (sortBy === 'price') {
-      filtered = [...filtered].sort((a, b) => a.dynamicPrice - b.dynamicPrice)
-    } else if (sortBy === 'score') {
-      filtered = [...filtered].sort((a, b) => b.matchScore - a.matchScore)
-    } else if (sortBy === 'distance') {
-      filtered = [...filtered].sort((a, b) => a.distanceKm - b.distanceKm)
-    }
-    return filtered
-  }, [listings, searchQuery, selectedCategory, sortBy])
+    load()
+  }, [demoMode])
 
-  const handleMatch = (listingId: string) => {
-    setMatchAnimation(listingId)
-    setTimeout(() => setMatchAnimation(null), 1500)
+  const handlePropose = async (listingId: string) => {
+    setProposing(listingId)
+    try {
+      await proposeMatch(listingId)
+      setProposedIds((prev) => new Set([...prev, listingId]))
+    } catch {
+      // ignore
+    } finally {
+      setProposing(null)
+    }
   }
+
+  const filtered = listings.filter((l) => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    const name = l.subscription?.service_name?.toLowerCase() || ''
+    const desc = (l.description || '').toLowerCase()
+    return name.includes(q) || desc.includes(q)
+  })
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.24em] text-vault-200">Discovery</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">Marketplace</h2>
-        </div>
-        <div className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-emerald-200">
-          {filteredListings.length} live listings
+          <h1 className="text-2xl font-bold text-white">Marketplace</h1>
+          <p className="text-sm text-slate-400">Find subscription seats near you</p>
         </div>
       </div>
 
-      <div className="panel p-3 sm:p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[220px]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Search services, sellers..."
-              className="input pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <select
-            className="input w-auto min-w-[160px]"
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            <option value="all">All Categories</option>
-            <option value="music">Music</option>
-            <option value="cloud_storage">Cloud Storage</option>
-            <option value="streaming">Streaming</option>
-            <option value="wellness">Wellness</option>
-            <option value="education">Education</option>
-          </select>
-
-          <select
-            className="input w-auto min-w-[150px]"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'price' | 'score' | 'distance')}
-          >
-            <option value="score">Best Match</option>
-            <option value="price">Lowest Price</option>
-            <option value="distance">Nearest</option>
-          </select>
-        </div>
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search services..."
+          className="w-full pl-10 pr-4 py-2.5 bg-slate-800/60 border border-slate-700/40 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-vault-500/50 transition"
+        />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {filteredListings.map((listing) => (
-          <div
-            key={listing.id}
-            className={`card relative overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-vault-500/40 ${
-              matchAnimation === listing.id ? 'ring-2 ring-emerald-500/60 shadow-[0_0_0_1px_rgba(16,185,129,0.5)]' : ''
-            }`}
-          >
-            <div className="absolute right-3 top-3">
+      {loading ? (
+        <div className="flex items-center justify-center h-48">
+          <Loader className="h-6 w-6 animate-spin text-vault-400" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12 text-slate-400">
+          <Zap className="h-10 w-10 mx-auto opacity-30 mb-3" />
+          <p className="font-medium">No listings found</p>
+          <p className="text-sm mt-1">Try a different search or check back later</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((listing) => {
+            const svcName = listing.subscription?.service_name || 'Unknown'
+            const logo = LOGOS[svcName] || '📦'
+            const isProposed = proposedIds.has(listing.id)
+
+            return (
               <div
-                className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold ${
-                  listing.matchScore >= 0.8
-                    ? 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/25'
-                    : listing.matchScore >= 0.6
-                    ? 'bg-amber-500/15 text-amber-300 ring-1 ring-amber-400/25'
-                    : 'bg-slate-800 text-slate-300 ring-1 ring-slate-700'
-                }`}
+                key={listing.id}
+                className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 hover:border-slate-700 transition-all"
               >
-                {(listing.matchScore * 100).toFixed(0)}
+                <div className="flex items-start gap-3 mb-3">
+                  <span className="text-3xl">{logo}</span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-white truncate">{svcName}</h3>
+                    <p className="text-xs text-slate-400">
+                      {listing.subscription?.tier || 'Standard'} plan
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-sm text-slate-300 mb-3 line-clamp-2">{listing.description}</p>
+
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="rounded-lg bg-slate-800/50 px-3 py-2">
+                    <p className="text-[10px] text-slate-500 uppercase">Price</p>
+                    <p className="text-sm font-bold text-vault-300">
+                      ${listing.dynamic_price.toFixed(2)}/mo
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-slate-800/50 px-3 py-2">
+                    <p className="text-[10px] text-slate-500 uppercase">Seats</p>
+                    <p className="text-sm font-bold text-white">{listing.seats_available}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 text-[10px] text-slate-500 mb-3">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    {listing.geo_radius_km}km
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Star className="h-3 w-3" />
+                    Min {Math.round(listing.min_trust_score * 100)}%
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Active
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => handlePropose(listing.id)}
+                  disabled={isProposed || proposing === listing.id}
+                  className={`w-full py-2.5 rounded-xl text-sm font-semibold transition ${
+                    isProposed
+                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                      : 'bg-vault-600 hover:bg-vault-500 text-white shadow-lg shadow-vault-500/20 disabled:opacity-50'
+                  }`}
+                >
+                  {isProposed ? '✓ Proposed' : proposing === listing.id ? 'Proposing...' : 'Propose Match'}
+                </button>
               </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-vault-500/10 text-2xl ring-1 ring-vault-500/20">
-                {listing.serviceName === 'Spotify'
-                  ? '🎵'
-                  : listing.serviceName === 'Google One'
-                  ? '☁️'
-                  : '📺'}
-              </div>
-              <div>
-                <h3 className="font-semibold text-white">{listing.serviceName}</h3>
-                <p className="text-sm text-slate-400">by {listing.sellerName}</p>
-              </div>
-            </div>
-
-            <p className="mt-4 text-sm leading-6 text-slate-300">{listing.description}</p>
-
-            <div className="mt-4 flex flex-wrap gap-1.5">
-              {listing.matchReasons.map((reason, i) => (
-                <span key={i} className="badge-blue">{reason}</span>
-              ))}
-            </div>
-
-            <div className="mt-4 flex items-center justify-between text-sm">
-              <div className="flex items-center gap-3 text-slate-400">
-                <span className="flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5" />
-                  {listing.distanceKm} km
-                </span>
-                <span className="flex items-center gap-1">
-                  <Star className="h-3.5 w-3.5 text-amber-400" />
-                  {(listing.sellerReputation * 100).toFixed(0)}%
-                </span>
-              </div>
-              <span className="text-sm font-medium text-slate-300">
-                {listing.seatsAvailable} seat(s)
-              </span>
-            </div>
-
-            <div className="mt-4 flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/70 p-3">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Dynamic Price</p>
-                <p className="mt-1 text-lg font-bold text-emerald-300">
-                  ${listing.dynamicPrice.toFixed(2)}
-                  <span className="text-xs text-slate-500">/mo</span>
-                </p>
-              </div>
-              <button
-                onClick={() => handleMatch(listing.id)}
-                className="btn-primary flex items-center gap-2"
-              >
-                <UserPlus className="h-4 w-4" />
-                {matchAnimation === listing.id ? 'Matched!' : 'Match'}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {filteredListings.length === 0 && (
-        <div className="card text-center">
-          <Search className="mx-auto h-12 w-12 text-slate-600" />
-          <h3 className="mt-3 text-lg font-medium text-slate-200">No listings found</h3>
-          <p className="mt-1 text-sm text-slate-500">Try adjusting your filters or search query.</p>
+            )
+          })}
         </div>
       )}
     </div>

@@ -91,7 +91,7 @@ async def list_my_matches(
             listing_id=str(m.listing_id),
             buyer_id=str(m.buyer_id),
             seller_id=str(m.seller_id),
-            status=m.status.value,
+            status=m.status,
             match_score=m.match_score,
             trust_score=m.trust_score,
             proximity_score=m.proximity_score,
@@ -168,7 +168,7 @@ async def propose_match(
     return MatchActionResponse(
         message="Match proposed successfully",
         match_id=str(match.id),
-        status=match.status.value,
+        status=match.status,
     )
 
 
@@ -186,7 +186,7 @@ async def accept_match(
     if match.seller_id != user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the seller can accept a match")
     if match.status != MatchStatus.PROPOSED:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot accept match in {match.status.value} status")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot accept match in {match.status} status")
     if match.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Match has expired")
 
@@ -208,7 +208,7 @@ async def accept_match(
         sub = sub_result.scalar_one_or_none()
         if sub:
             service_name = sub.service_name
-            subscription_tier = sub.tier.value
+            subscription_tier = sub.tier
             monthly_cost = sub.monthly_cost
 
     # Auto-create conversation for match negotiation with full subscription details
@@ -265,7 +265,7 @@ async def accept_match(
     return MatchActionResponse(
         message=f"Match accepted. Conversation initiated for {service_name} subscription pricing.",
         match_id=str(match.id),
-        status=match.status.value,
+        status=match.status,
     )
 
 
@@ -283,7 +283,7 @@ async def reject_match(
     if match.seller_id != user.id and match.buyer_id != user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to reject this match")
     if match.status != MatchStatus.PROPOSED:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot reject match in {match.status.value} status")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot reject match in {match.status} status")
 
     match.status = MatchStatus.REJECTED
     await db.flush()
@@ -293,5 +293,5 @@ async def reject_match(
     return MatchActionResponse(
         message="Match rejected",
         match_id=str(match.id),
-        status=match.status.value,
+        status=match.status,
     )

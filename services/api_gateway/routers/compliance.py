@@ -75,7 +75,7 @@ async def list_compliance_events(
     return [
         ComplianceEventResponse(
             id=str(e.id),
-            event_type=e.event_type.value,
+            event_type=e.event_type,
             severity=e.severity,
             title=e.title,
             description=e.description,

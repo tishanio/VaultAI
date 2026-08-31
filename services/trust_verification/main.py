@@ -229,9 +229,9 @@ async def get_kyc_status(user_id: str, db: AsyncSession = Depends(get_db)):
 
     return KYCResponse(
         verification_id=str(verification.id),
-        status=verification.status.value,
+        status=verification.status,
         onfido_check_id=verification.onfido_check_id,
-        message=f"KYC status: {verification.status.value}",
+        message=f"KYC status: {verification.status}",
     )
 
 
@@ -297,7 +297,7 @@ async def verify_user_trust(user_id: str, db: AsyncSession = Depends(get_db)):
         .limit(1)
     )
     kyc = kyc_result.scalar_one_or_none()
-    kyc_status = kyc.status.value if kyc else "not_started"
+    kyc_status = kyc.status if kyc else "not_started"
     is_verified = kyc_status == "verified"
 
     # Reputation check

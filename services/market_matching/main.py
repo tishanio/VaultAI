@@ -404,7 +404,7 @@ async def check_availability(listing_id: str, db: AsyncSession = Depends(get_db)
     return AvailabilityUpdate(
         listing_id=listing_id,
         seats_available=available,
-        status=listing.status.value,
+        status=listing.status,
         last_checked=datetime.now(timezone.utc).isoformat(),
     )
 

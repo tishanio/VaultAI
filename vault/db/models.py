@@ -28,7 +28,6 @@ from typing import Optional
 from sqlalchemy import (
     Boolean,
     DateTime,
-    Enum,
     Float,
     ForeignKey,
     Index,
@@ -136,7 +135,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     username: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(100), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[UserRole] = mapped_column(Enum(UserRole, values_callable=lambda x: [e.value for e in x]), default=UserRole.USER, nullable=False)
+    role: Mapped[UserRole] = mapped_column(String(20), default=UserRole.USER, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
@@ -179,8 +178,8 @@ class Subscription(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     service_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     service_category: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     service_logo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    tier: Mapped[SubscriptionTier] = mapped_column(Enum(SubscriptionTier, values_callable=lambda x: [e.value for e in x]), nullable=False)
-    status: Mapped[SubscriptionStatus] = mapped_column(Enum(SubscriptionStatus, values_callable=lambda x: [e.value for e in x]), default=SubscriptionStatus.ACTIVE, nullable=False)
+    tier: Mapped[SubscriptionTier] = mapped_column(String(20), nullable=False)
+    status: Mapped[SubscriptionStatus] = mapped_column(String(20), default=SubscriptionStatus.ACTIVE, nullable=False)
     monthly_cost: Mapped[float] = mapped_column(Float, nullable=False)
     max_seats: Mapped[int] = mapped_column(Integer, nullable=False)
     used_seats: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -231,7 +230,7 @@ class MarketListing(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     seller_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     subscription_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("subscriptions.id"), nullable=False, index=True)
-    status: Mapped[ListingStatus] = mapped_column(Enum(ListingStatus, values_callable=lambda x: [e.value for e in x]), default=ListingStatus.ACTIVE, nullable=False)
+    status: Mapped[ListingStatus] = mapped_column(String(20), default=ListingStatus.ACTIVE, nullable=False)
     asking_price: Mapped[float] = mapped_column(Float, nullable=False)
     dynamic_price: Mapped[float] = mapped_column(Float, nullable=False)
     seats_available: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -262,7 +261,7 @@ class Match(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     listing_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("market_listings.id"), nullable=False, index=True)
     buyer_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     seller_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    status: Mapped[MatchStatus] = mapped_column(Enum(MatchStatus, values_callable=lambda x: [e.value for e in x]), default=MatchStatus.PROPOSED, nullable=False)
+    status: Mapped[MatchStatus] = mapped_column(String(20), default=MatchStatus.PROPOSED, nullable=False)
     match_score: Mapped[float] = mapped_column(Float, nullable=False)
     trust_score: Mapped[float] = mapped_column(Float, nullable=False)
     proximity_score: Mapped[float] = mapped_column(Float, nullable=False)
@@ -293,7 +292,7 @@ class EscrowTransaction(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     match_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("matches.id"), nullable=False, unique=True, index=True)
     stripe_payment_intent_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, unique=True)
     stripe_transfer_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    status: Mapped[EscrowStatus] = mapped_column(Enum(EscrowStatus, values_callable=lambda x: [e.value for e in x]), default=EscrowStatus.CREATED, nullable=False)
+    status: Mapped[EscrowStatus] = mapped_column(String(20), default=EscrowStatus.CREATED, nullable=False)
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     platform_fee: Mapped[float] = mapped_column(Float, nullable=False)
     seller_payout: Mapped[float] = mapped_column(Float, nullable=False)
@@ -316,7 +315,7 @@ class KYCVerification(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     onfido_check_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    status: Mapped[KYCStatus] = mapped_column(Enum(KYCStatus, values_callable=lambda x: [e.value for e in x]), default=KYCStatus.PENDING, nullable=False)
+    status: Mapped[KYCStatus] = mapped_column(String(20), default=KYCStatus.PENDING, nullable=False)
     document_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     document_country: Mapped[Optional[str]] = mapped_column(String(2), nullable=True)
     verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -358,7 +357,7 @@ class Dispute(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     match_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("matches.id"), nullable=False, index=True)
     filed_by_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    status: Mapped[DisputeStatus] = mapped_column(Enum(DisputeStatus, values_callable=lambda x: [e.value for e in x]), default=DisputeStatus.OPEN, nullable=False)
+    status: Mapped[DisputeStatus] = mapped_column(String(20), default=DisputeStatus.OPEN, nullable=False)
     reason: Mapped[str] = mapped_column(String(50), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     evidence_urls: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
@@ -377,7 +376,7 @@ class Payout(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     stripe_transfer_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    status: Mapped[PayoutStatus] = mapped_column(Enum(PayoutStatus, values_callable=lambda x: [e.value for e in x]), default=PayoutStatus.PENDING, nullable=False)
+    status: Mapped[PayoutStatus] = mapped_column(String(20), default=PayoutStatus.PENDING, nullable=False)
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="USD", nullable=False)
     payout_method: Mapped[str] = mapped_column(String(50), nullable=False)  # bank_transfer, stripe_balance
@@ -396,7 +395,7 @@ class ComplianceEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "compliance_events"
 
     user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
-    event_type: Mapped[ComplianceEventType] = mapped_column(Enum(ComplianceEventType, values_callable=lambda x: [e.value for e in x]), nullable=False, index=True)
+    event_type: Mapped[ComplianceEventType] = mapped_column(String(30), nullable=False, index=True)
     severity: Mapped[str] = mapped_column(String(20), nullable=False)  # low, medium, high, critical
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
@@ -437,7 +436,7 @@ class Conversation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     match_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("matches.id"), nullable=False, unique=True, index=True)
     buyer_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     seller_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    status: Mapped[ConversationStatus] = mapped_column(Enum(ConversationStatus, values_callable=lambda x: [e.value for e in x]), default=ConversationStatus.ACTIVE, nullable=False)
+    status: Mapped[ConversationStatus] = mapped_column(String(20), default=ConversationStatus.ACTIVE, nullable=False)
     topic: Mapped[str] = mapped_column(String(100), nullable=False)  # e.g., "subscription_pricing", "payment_confirmation"
     subscription_details: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)  # pricing, tiers, etc
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

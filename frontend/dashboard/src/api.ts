@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_URL || ''
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -17,13 +17,42 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle 401 errors
+// Handle 401 errors — reject but don't force-redirect
+// (The app routes handle redirect logic; a hard redirect causes loops)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // Clear the stale token so it doesn't keep causing 401s
       localStorage.removeItem('vault_token')
-      window.location.href = '/login'
+
+      // Only force redirect if we're NOT on the login page already
+      // and there are no saved accounts (truly unauthenticated)
+      const savedRaw = localStorage.getItem('vault_saved_accounts')
+      const savedAccounts: { token: string }[] = savedRaw ? JSON.parse(savedRaw) : []
+      // Remove the expired account from saved accounts
+      if (savedAccounts.length > 0) {
+        // Keep accounts that have different (valid) tokens
+        const validAccounts = savedAccounts.filter((a) => {
+          try {
+            const parts = a.token.split('.')
+            if (parts.length !== 3) return false
+            const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+            const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+            const payload = JSON.parse(atob(padded))
+            const nowSec = Math.floor(Date.now() / 1000)
+            return typeof payload.exp === 'number' && nowSec <= payload.exp
+          } catch {
+            return false
+          }
+        })
+        localStorage.setItem('vault_saved_accounts', JSON.stringify(validAccounts))
+        if (validAccounts.length === 0 && window.location.pathname !== '/login') {
+          window.location.href = '/login'
+        }
+      } else if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }

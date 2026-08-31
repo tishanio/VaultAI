@@ -176,7 +176,7 @@ async def release_escrow(
     if not match or match.seller_id != user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the seller can release escrow")
     if escrow.status != EscrowStatus.FUNDED:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot release escrow in {escrow.status.value} status")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot release escrow in {escrow.status} status")
 
     if not settings.DEMO_MODE and escrow.stripe_transfer_id:
         try:
@@ -233,7 +233,7 @@ async def refund_escrow(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Escrow not found")
 
     if escrow.status not in (EscrowStatus.FUNDED, EscrowStatus.HELD):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot refund escrow in {escrow.status.value} status")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot refund escrow in {escrow.status} status")
 
     if not settings.DEMO_MODE and escrow.stripe_payment_intent_id:
         try:
@@ -266,7 +266,7 @@ async def get_escrow(
     return EscrowResponse(
         id=str(escrow.id),
         match_id=str(escrow.match_id),
-        status=escrow.status.value,
+        status=escrow.status,
         amount=escrow.amount,
         platform_fee=escrow.platform_fee,
         seller_payout=escrow.seller_payout,

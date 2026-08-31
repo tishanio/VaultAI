@@ -109,11 +109,41 @@ async def toggle_demo_mode():
     return {"demo_mode": settings.DEMO_MODE, "message": "Demo mode toggled"}
 
 
+@app.post("/api/v1/demo/login")
+async def demo_login(username: str = "sarahchen", db: AsyncSession = Depends(get_db)):
+    """Quick login for demo users (no password required)."""
+    from vault.db.models import User
+    from services.api_gateway.routers.auth import create_access_token, create_refresh_token
+    from sqlalchemy import select
+
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail=f"Demo user '{username}' not found. Seed data first.")
+
+    access_token = create_access_token(str(user.id), {"username": user.username})
+    refresh_token = create_refresh_token(str(user.id))
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "expires_in": 3600,
+        "user_id": str(user.id),
+        "username": user.username,
+    }
+
+
 @app.post("/api/v1/demo/seed")
 async def seed_demo_data(db: AsyncSession = Depends(get_db)):
     """Seed database with realistic demo data for hackathon."""
     from vault.db.models import User, Subscription, MarketListing, ReputationScore
+    from sqlalchemy import select
     import uuid
+
+    # Idempotent: check if already seeded
+    existing = await db.execute(select(User).where(User.username == "demo_user"))
+    if existing.scalar_one_or_none():
+        return {"message": "Demo data already seeded", "users": 2, "subscriptions": 3, "listings": 1}
 
     demo_users = [
         User(

@@ -188,7 +188,7 @@ async def _handle_payment_intent_succeeded(data: dict[str, Any], db: AsyncSessio
         return
 
     if escrow.status in (EscrowStatus.FUNDED, EscrowStatus.HELD, EscrowStatus.RELEASED):
-        logger.info("Escrow %s already in status %s – skipping", escrow.id, escrow.status.value)
+        logger.info("Escrow %s already in status %s – skipping", escrow.id, escrow.status)
         return
 
     # Transition: CREATED -> FUNDED

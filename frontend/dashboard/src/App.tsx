@@ -20,12 +20,27 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated)
   const demoMode = useAppStore((s) => s.demoMode)
+  const _authReady = useAppStore((s) => s._authReady)
 
-  // In demo mode, skip auth check
-  if (!isAuthenticated && !demoMode) {
-    return <Navigate to="/login" replace />
+  // Show nothing while auth state is initializing (prevents redirect flicker)
+  if (!_authReady) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-950 text-gray-400">
+        <div className="flex items-center gap-3">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-vault-500 border-t-transparent" />
+          <span>Checking authentication…</span>
+        </div>
+      </div>
+    )
   }
-  return <>{children}</>
+
+  // Authenticated or demo mode → render content
+  if (isAuthenticated || demoMode) {
+    return <>{children}</>
+  }
+
+  // Not authenticated → redirect to login
+  return <Navigate to="/login" replace />
 }
 
 export default function App() {

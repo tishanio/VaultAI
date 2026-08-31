@@ -94,14 +94,24 @@ class EventPublisher:
     async def publish(self, event: Event) -> str:
         """Publish an event and return the stream ID."""
         if not self._redis:
-            await self.connect()
-        stream_key = f"vault:events:{event.event_type}"
-        general_stream = "vault:events:all"
-        msg_id = await self._redis.xadd(stream_key, event.to_dict(), maxlen=10000)
-        await self._redis.xadd(general_stream, event.to_dict(), maxlen=50000)
-        event.id = msg_id
-        logger.info("Published event %s [%s] id=%s", event.event_type, event.source, msg_id)
-        return msg_id
+            try:
+                await self.connect()
+            except Exception:
+                logger.warning("Redis unavailable — event %s logged but not published", event.event_type)
+                event.id = "local"
+                return "local"
+        try:
+            stream_key = f"vault:events:{event.event_type}"
+            general_stream = "vault:events:all"
+            msg_id = await self._redis.xadd(stream_key, event.to_dict(), maxlen=10000)
+            await self._redis.xadd(general_stream, event.to_dict(), maxlen=50000)
+            event.id = msg_id
+            logger.info("Published event %s [%s] id=%s", event.event_type, event.source, msg_id)
+            return msg_id
+        except Exception:
+            logger.warning("Redis unavailable — event %s logged but not published", event.event_type)
+            event.id = "local"
+            return "local"
 
 
 class EventConsumer:
