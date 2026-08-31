@@ -1,0 +1,93 @@
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: vault-postgres
+    plan: starter
+    ipAddress: private
+    env: pserv
+    dbName: vault_db
+    user: vault_user
+    region: oregon
+
+  # Redis Cache
+  - type: pserv
+    name: vault-redis
+    plan: starter
+    ipAddress: private
+    env: redis
+    region: oregon
+
+  # Backend API
+  - type: web
+    name: vault-api
+    runtime: python
+    plan: starter
+    region: oregon
+    buildCommand: |
+      pip install -r services/api_gateway/requirements.txt
+      alembic upgrade head
+    startCommand: python services/api_gateway/main.py
+    numInstances: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: PORT
+        value: 8001
+      - key: ENVIRONMENT
+        value: production
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_PORT
+        value: 8001
+      - key: DATABASE_URL
+        fromDatabase:
+          name: vault-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: vault-redis
+          type: pserv
+          property: internalConnectionString
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: JWT_PRIVATE_KEY_PATH
+        value: keys/jwt_private.pem
+      - key: JWT_PUBLIC_KEY_PATH
+        value: keys/jwt_public.pem
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: '["https://vault-frontend.onrender.com"]'
+
+  # Frontend React App
+  - type: web
+    name: vault-frontend
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm run build
+    startCommand: npm run preview
+    rootDir: frontend/dashboard
+    numInstances: 1
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: vault-api
+          type: web
+          property: url
+      - key: VITE_STRIPE_PUBLIC_KEY
+        sync: false
+      - key: VITE_RAZORPAY_KEY
+        sync: false
+      - key: NODE_VERSION
+        value: 20.9.0
