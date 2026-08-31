@@ -1,0 +1,178 @@
+version: "3.9"
+
+services:
+  # --- Infrastructure ---
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: vault_db
+      POSTGRES_USER: vault
+      POSTGRES_PASSWORD: vault_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vault -d vault_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: vaultadmin
+      MINIO_ROOT_PASSWORD: vaultadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  # --- Backend Services ---
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn services.api_gateway.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://vault:vault_secret@postgres:5432/vault_db
+      REDIS_URL: redis://redis:6379/0
+      DEMO_MODE: "true"
+      DEBUG: "true"
+    volumes:
+      - ./vault:/app/vault
+      - ./services:/app/services
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  usage-intelligence:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn services.usage_intelligence.main:app --host 0.0.0.0 --port 8001 --reload
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://vault:vault_secret@postgres:5432/vault_db
+      REDIS_URL: redis://redis:6379/0
+      DEMO_MODE: "true"
+    volumes:
+      - ./vault:/app/vault
+      - ./services:/app/services
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  trust-verification:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn services.trust_verification.main:app --host 0.0.0.0 --port 8002 --reload
+    ports:
+      - "8002:8002"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://vault:vault_secret@postgres:5432/vault_db
+      REDIS_URL: redis://redis:6379/0
+      DEMO_MODE: "true"
+      ONFIDO_MOCK_MODE: "true"
+    volumes:
+      - ./vault:/app/vault
+      - ./services:/app/services
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  market-matching:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn services.market_matching.main:app --host 0.0.0.0 --port 8003 --reload
+    ports:
+      - "8003:8003"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://vault:vault_secret@postgres:5432/vault_db
+      REDIS_URL: redis://redis:6379/0
+      DEMO_MODE: "true"
+    volumes:
+      - ./vault:/app/vault
+      - ./services:/app/services
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  financial-orchestration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn services.financial_orchestration.main:app --host 0.0.0.0 --port 8004 --reload
+    ports:
+      - "8004:8004"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://vault:vault_secret@postgres:5432/vault_db
+      REDIS_URL: redis://redis:6379/0
+      DEMO_MODE: "true"
+      STRIPE_SECRET_KEY: sk_test_placeholder
+    volumes:
+      - ./vault:/app/vault
+      - ./services:/app/services
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  compliance-risk:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn services.compliance_risk.main:app --host 0.0.0.0 --port 8005 --reload
+    ports:
+      - "8005:8005"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://vault:vault_secret@postgres:5432/vault_db
+      REDIS_URL: redis://redis:6379/0
+      DEMO_MODE: "true"
+    volumes:
+      - ./vault:/app/vault
+      - ./services:/app/services
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # --- Frontend ---
+  dashboard:
+    build:
+      context: ./frontend/dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://localhost:8000
+      VITE_DEMO_MODE: "true"
+    volumes:
+      - ./frontend/dashboard/src:/app/src
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

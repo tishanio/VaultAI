@@ -1,0 +1,10 @@
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+sqlalchemy[asyncio]==2.0.27
+asyncpg==0.29.0
+pydantic-settings==2.1.0
+redis[hiredis]==5.0.1
+celery[redis]==5.3.6
+loguru==0.7.2
+httpx==0.26.0
+cryptography==42.0.2

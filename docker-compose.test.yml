@@ -1,0 +1,21 @@
+services:
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: sh -c "cd /app && pip install httpx pytest-asyncio ruff && python -m pytest /app/tests/backend/ -v --tb=short"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://vault:vault_secret@postgres:5432/vault_db
+      REDIS_URL: redis://redis:6379/0
+      DEMO_MODE: "true"
+    volumes:
+      - ./vault:/app/vault
+      - ./services:/app/services
+      - ./tests:/app/tests
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles:
+      - test

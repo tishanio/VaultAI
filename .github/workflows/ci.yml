@@ -1,0 +1,176 @@
+name: Vault CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "18"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Lint & Type Check
+  # ---------------------------------------------------------------------------
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install ruff
+        run: pip install ruff
+      - name: Lint Python code
+        run: ruff check vault/ services/
+      - name: Check formatting
+        run: ruff format --check vault/ services/
+
+  typecheck-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: frontend/dashboard/pnpm-lock.yaml
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+
+  # ---------------------------------------------------------------------------
+  # Backend Tests
+  # ---------------------------------------------------------------------------
+  test-backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: vault_test
+          POSTGRES_USER: vault
+          POSTGRES_PASSWORD: vault_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    env:
+      DATABASE_URL: postgresql+asyncpg://vault:vault_test@localhost:5432/vault_test
+      REDIS_URL: redis://localhost:6379/0
+      DEMO_MODE: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          pip install -r services/api-gateway/requirements.txt
+          pip install pytest pytest-cov pytest-asyncio httpx
+      - name: Run migrations
+        run: |
+          cd services/api-gateway
+          alembic upgrade head
+      - name: Run tests
+        run: |
+          cd services/api-gateway
+          pytest --cov=. --cov-report=xml --cov-report=term -v
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: services/api-gateway/coverage.xml
+
+  # ---------------------------------------------------------------------------
+  # Frontend Tests
+  # ---------------------------------------------------------------------------
+  test-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: frontend/dashboard/pnpm-lock.yaml
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test -- --run --coverage
+
+  # ---------------------------------------------------------------------------
+  # Build Docker Images
+  # ---------------------------------------------------------------------------
+  build:
+    needs: [lint, typecheck-frontend, test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [api-gateway, usage-intelligence, trust-verification, market-matching, financial-orchestration, compliance-risk]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:latest
+
+  # ---------------------------------------------------------------------------
+  # Deploy (on merge to main)
+  # ---------------------------------------------------------------------------
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Deploy to ECS
+        run: |
+          for service in api-gateway usage-intelligence trust-verification market-matching financial-orchestration compliance-risk; do
+            aws ecs update-service \
+              --cluster vault-production \
+              --service $service \
+              --force-new-deployment \
+              --no-cli-pager
+          done

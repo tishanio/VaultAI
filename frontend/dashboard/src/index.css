@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    font-family: Inter, 'Segoe UI', sans-serif;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply min-h-screen bg-[#070b14] text-slate-100 antialiased;
+    background-image:
+      radial-gradient(circle at top, rgba(59, 130, 246, 0.14), transparent 30%),
+      radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.1), transparent 25%);
+  }
+
+  * {
+    @apply border-slate-800;
+  }
+
+  a {
+    @apply no-underline;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-[28px] border border-slate-800 bg-slate-950/80 shadow-[0_20px_80px_rgba(1,6,17,0.6)] backdrop-blur-sm;
+  }
+
+  .card {
+    @apply rounded-[24px] border border-slate-800 bg-slate-950/80 shadow-[0_20px_80px_rgba(1,6,17,0.6)] p-5 backdrop-blur-sm;
+  }
+
+  .btn-primary {
+    @apply rounded-2xl bg-vault-500 px-4 py-3 font-medium text-white transition hover:bg-vault-400 focus:outline-none focus:ring-2 focus:ring-vault-500/60 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 font-medium text-slate-200 transition hover:border-slate-500 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500/60 focus:ring-offset-2 focus:ring-offset-slate-950;
+  }
+
+  .btn-danger {
+    @apply rounded-2xl bg-red-600 px-4 py-3 font-medium text-white transition hover:bg-red-500;
+  }
+
+  .input {
+    @apply w-full rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-slate-100 placeholder-slate-500 transition focus:border-vault-500 focus:outline-none focus:ring-2 focus:ring-vault-500/30;
+  }
+
+  .badge-green {
+    @apply inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300 ring-1 ring-emerald-400/20;
+  }
+
+  .badge-yellow {
+    @apply inline-flex items-center rounded-full bg-yellow-500/10 px-2.5 py-1 text-xs font-medium text-yellow-300 ring-1 ring-yellow-400/20;
+  }
+
+  .badge-red {
+    @apply inline-flex items-center rounded-full bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-300 ring-1 ring-red-400/30;
+  }
+
+  .badge-blue {
+    @apply inline-flex items-center rounded-full bg-vault-500/10 px-2.5 py-1 text-xs font-medium text-vault-200 ring-1 ring-vault-400/20;
+  }
+}

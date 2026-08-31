@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.coverage
+htmlcov/
+coverage.xml
+.pytest_cache/
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# Docker
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keys
+keys/
+*.pem
+
+# Logs
+*.log
