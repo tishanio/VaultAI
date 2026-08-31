@@ -1,21 +1,19 @@
-services:
-  # PostgreSQL Database
-  - type: pserv
-    name: vault-postgres
-    plan: starter
-    ipAddress: private
-    env: pserv
-    dbName: vault_db
+# Top-level databases section for managed Render Postgres
+databases:
+  - name: vault-postgres
+    databaseName: vault_db
     user: vault_user
+    plan: starter
     region: oregon
 
-  # Redis Cache
-  - type: pserv
+services:
+  # Managed Redis / Key-Value Instance
+  - type: redis
     name: vault-redis
     plan: starter
-    ipAddress: private
-    env: redis
     region: oregon
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: [] # Restricts access to internal private network only
 
   # Backend API
   - type: web
@@ -30,7 +28,7 @@ services:
     numInstances: 1
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11
+        value: 3.11.0
       - key: PORT
         value: 8001
       - key: ENVIRONMENT
@@ -45,9 +43,9 @@ services:
           property: connectionString
       - key: REDIS_URL
         fromService:
+          type: redis
           name: vault-redis
-          type: pserv
-          property: internalConnectionString
+          property: connectionString
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
@@ -82,8 +80,8 @@ services:
     envVars:
       - key: VITE_API_URL
         fromService:
-          name: vault-api
           type: web
+          name: vault-api
           property: url
       - key: VITE_STRIPE_PUBLIC_KEY
         sync: false

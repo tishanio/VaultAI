@@ -1,0 +1,16 @@
+{
+  "buildCommand": "tsc && vite build",
+  "outputDirectory": "dist",
+  "devCommand": "vite",
+  "env": {
+    "VITE_API_URL": "@vault_api_url",
+    "VITE_STRIPE_PUBLIC_KEY": "@vault_stripe_key",
+    "VITE_RAZORPAY_KEY": "@vault_razorpay_key"
+  },
+  "routes": [
+    {
+      "src": "^/(?!.*\\.)",
+      "destination": "/index.html"
+    }
+  ]
+}
