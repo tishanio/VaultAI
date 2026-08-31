@@ -10,6 +10,7 @@ bcrypt==4.1.2
 cryptography==42.0.2
 redis[hiredis]==5.0.1
 stripe==7.14.0
+razorpay==1.5.0
 celery[redis]==5.3.6
 loguru==0.7.2
 httpx==0.26.0

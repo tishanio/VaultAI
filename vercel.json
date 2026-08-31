@@ -1,0 +1,31 @@
+{
+  "builds": [
+    {
+      "src": "services/api_gateway/main.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb",
+        "runtime": "python3.11"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "services/api_gateway/main.py"
+    }
+  ],
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "REDIS_URL": "@redis_url",
+    "STRIPE_SECRET_KEY": "@stripe_secret_key",
+    "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret",
+    "RAZORPAY_KEY_ID": "@razorpay_key_id",
+    "RAZORPAY_KEY_SECRET": "@razorpay_key_secret",
+    "OPENAI_API_KEY": "@openai_api_key",
+    "SECRET_KEY": "@secret_key",
+    "JWT_PRIVATE_KEY_PATH": "keys/jwt_private.pem",
+    "JWT_PUBLIC_KEY_PATH": "keys/jwt_public.pem"
+  },
+  "regions": ["iad1"]
+}
